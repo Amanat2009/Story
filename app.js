@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Two-Pen Tales - Role-Locked Online Co-Writing Engine & Clean Slate Manager
+   Two-Pen Tales - Role-Locked Online Co-Writing Engine & Strict API Enforcement
    ========================================================================== */
 
 const state = {
@@ -127,6 +127,13 @@ function cacheDOM() {
     targetRoundsSelect: document.getElementById('targetRoundsSelect'),
     roundProgressBadge: document.getElementById('roundProgressBadge'),
     startNewStoryBtn: document.getElementById('startNewStoryBtn'),
+    openApiKeyModalBtn: document.getElementById('openApiKeyModalBtn'),
+    apiKeyModal: document.getElementById('apiKeyModal'),
+    closeApiKeyModalBtn: document.getElementById('closeApiKeyModalBtn'),
+    apiKeyInput: document.getElementById('apiKeyInput'),
+    saveApiKeyBtn: document.getElementById('saveApiKeyBtn'),
+    clearApiKeyBtn: document.getElementById('clearApiKeyBtn'),
+
     penAName: document.getElementById('penAName'),
     penBName: document.getElementById('penBName'),
     labelPenAName: document.getElementById('labelPenAName'),
@@ -254,6 +261,27 @@ function bindEvents() {
   });
 
   DOM.startNewStoryBtn.addEventListener('click', () => startNewStory(true));
+
+  // API Key Modal Events
+  DOM.openApiKeyModalBtn.addEventListener('click', () => {
+    DOM.apiKeyInput.value = state.apiKey;
+    DOM.apiKeyModal.classList.remove('hidden');
+  });
+  DOM.closeApiKeyModalBtn.addEventListener('click', () => DOM.apiKeyModal.classList.add('hidden'));
+  DOM.saveApiKeyBtn.addEventListener('click', () => {
+    const val = DOM.apiKeyInput.value.trim();
+    state.apiKey = val;
+    localStorage.setItem('gemini_api_key', val);
+    DOM.apiKeyModal.classList.add('hidden');
+    showToast(val ? "🔑 API Key saved!" : "⚠️ API Key cleared.");
+  });
+  DOM.clearApiKeyBtn.addEventListener('click', () => {
+    state.apiKey = "";
+    localStorage.removeItem('gemini_api_key');
+    DOM.apiKeyInput.value = "";
+    DOM.apiKeyModal.classList.add('hidden');
+    showToast("⚠️ API Key removed.");
+  });
 
   DOM.audioToggleBtn.addEventListener('click', () => {
     state.audioEnabled = !state.audioEnabled;
@@ -740,6 +768,12 @@ window.quickFill = function(targetId, text) {
 async function handleWeavePassage() {
   if (!state.penA.locked || !state.penB.locked) return;
 
+  if (!state.apiKey) {
+    showToast("⚠️ Missing Gemini API Key. Click '🔑 API Key' to enter your key.");
+    DOM.apiKeyModal.classList.remove('hidden');
+    return;
+  }
+
   DOM.weavePassageBtn.disabled = true;
   DOM.weaveBtnText.textContent = "Weaving passage...";
   sounds.playWeaveMagicSound();
@@ -787,14 +821,11 @@ Return JSON: {"passage": "...", "sparkA_phrase": "...", "sparkB_phrase": "..."}`
     displayDraftPassage(parsed.passage, parsed.sparkA_phrase, parsed.sparkB_phrase);
     sendSyncEvent({ type: 'PASSAGE_WEAVED', draft: { text: parsed.passage, sparkAPhrase: parsed.sparkA_phrase, sparkBPhrase: parsed.sparkB_phrase } });
   } catch (err) {
-    const fallbackText = `As ${state.penA.name}'s vision of ${state.penA.spark} unfolded, ${state.penB.name}'s element of ${state.penB.spark} stirred in response. Their shared story took its next fateful turn.`;
-    displayDraftPassage(fallbackText, state.penA.spark, state.penB.spark);
-    sendSyncEvent({ type: 'PASSAGE_WEAVED', draft: { text: fallbackText, sparkAPhrase: state.penA.spark, sparkBPhrase: state.penB.spark } });
+    displayAPIError(err.message);
   }
 }
 
 async function generateFinalePassage(historyContext) {
-  state.isConcluded = true;
   const prompt = `Weave the GRAND FINALE for "${state.storyTitle}".
 History: ${historyContext}
 Final Spark A: "${state.penA.spark}".
@@ -809,6 +840,7 @@ Return JSON: {"passage": "...", "sparkA_phrase": "...", "sparkB_phrase": "..."}`
 
   try {
     const response = await fetchGeminiAPI(prompt);
+    state.isConcluded = true;
     let parsed;
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -819,43 +851,69 @@ Return JSON: {"passage": "...", "sparkA_phrase": "...", "sparkB_phrase": "..."}`
     displayDraftPassage(`[FINALE] ${parsed.passage}`, parsed.sparkA_phrase, parsed.sparkB_phrase);
     sendSyncEvent({ type: 'PASSAGE_WEAVED', draft: { text: `[FINALE] ${parsed.passage}`, sparkAPhrase: parsed.sparkA_phrase, sparkBPhrase: parsed.sparkB_phrase } });
   } catch (err) {
-    const fallback = `[FINALE] With ${state.penA.name}'s ${state.penA.spark} and ${state.penB.name}'s ${state.penB.spark} bound together, the tale concluded in perfect harmony.`;
-    displayDraftPassage(fallback, state.penA.spark, state.penB.spark);
-    sendSyncEvent({ type: 'PASSAGE_WEAVED', draft: { text: fallback, sparkAPhrase: state.penA.spark, sparkBPhrase: state.penB.spark } });
+    displayAPIError(err.message);
   }
 }
 
 async function generateClashOfFates(historyContext) {
-  state.isClashMode = true;
   const prompt = `Story tension fork between Pen A ("${state.penA.spark}") and Pen B ("${state.penB.spark}").
 CRITICAL LANGUAGE RULE: Write in VERY SIMPLE, EASY ENGLISH with short sentences.
 Return JSON: {"outcomeA": "2 sentence branch A in simple English...", "outcomeB": "2 sentence branch B in simple English..."}`;
 
   try {
     const response = await fetchGeminiAPI(prompt);
+    state.isClashMode = true;
     let parsed;
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       parsed = JSON.parse(jsonMatch ? jsonMatch[0] : response);
     } catch (e) {
-      parsed = { outcomeA: `Path A favors ${state.penA.spark}.`, outcomeB: `Path B favors ${state.penB.spark}.` };
+      throw new Error("Unable to parse API response format.");
     }
     showClashUI(parsed.outcomeA, parsed.outcomeB);
   } catch (err) {
-    showClashUI(`Path A favors ${state.penA.spark}.`, `Path B favors ${state.penB.spark}.`);
+    displayAPIError(err.message);
   }
 }
 
 async function fetchGeminiAPI(promptText) {
+  if (!state.apiKey) {
+    throw new Error("No Gemini API key provided. Please click '🔑 API Key' in the top bar to set a valid key.");
+  }
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${state.modelName}:generateContent?key=${state.apiKey}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
-  });
-  if (!response.ok) throw new Error(`API Error: ${response.status}`);
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+    });
+  } catch (netErr) {
+    throw new Error("Network connection error. Check your internet connection.");
+  }
+
+  if (!response.ok) {
+    if (response.status === 400 || response.status === 401 || response.status === 403) {
+      throw new Error(`API Key Error (${response.status}): Your Gemini API Key is invalid or expired. Click '🔑 API Key' to update it.`);
+    }
+    throw new Error(`Gemini API Error (${response.status}): Failed to generate story passage.`);
+  }
+
   const data = await response.json();
+  if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+    throw new Error("Gemini API returned empty response.");
+  }
+
   return data.candidates[0].content.parts[0].text;
+}
+
+function displayAPIError(errMsg) {
+  showToast(`❌ ${errMsg}`);
+  DOM.draftPlaceholder.classList.remove('hidden');
+  DOM.draftContentCard.classList.add('hidden');
+  DOM.clashCard.classList.add('hidden');
+  DOM.draftPlaceholder.innerHTML = `<p class="placeholder-text" style="color: #f43f5e;">❌ ${escapeHTML(errMsg)}</p>`;
 }
 
 function escapeHTML(str) {
@@ -999,6 +1057,7 @@ function resetInputChamber() {
 
   DOM.draftContentCard.classList.add('hidden');
   DOM.draftPlaceholder.classList.remove('hidden');
+  DOM.draftPlaceholder.innerHTML = `<p class="placeholder-text">The manuscript is clear. Enter sparks in both pens above to write the next chapter.</p>`;
   updateUIState();
   updateStoryCount();
 }

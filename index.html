@@ -34,6 +34,7 @@
       </div>
 
       <span class="chapter-indicator" id="roundProgressBadge">Chapter 1</span>
+      <button class="nav-btn" id="openApiKeyModalBtn">🔑 API Key</button>
       <button class="nav-btn new-story-btn" id="startNewStoryBtn">✨ New Tale</button>
       <button class="nav-btn" id="openKeepsakeBtn">📜 Storybook (<span id="storyCount">0</span>)</button>
       <button class="icon-btn" id="audioToggleBtn" title="Toggle sound">🔊</button>
@@ -242,6 +243,26 @@
     </section>
 
   </main>
+
+  <!-- Modal: API Key Configuration -->
+  <div class="modal-overlay hidden" id="apiKeyModal">
+    <div class="modal-card online-modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>🔑 Gemini API Key Settings</h2>
+        <button class="close-btn" id="closeApiKeyModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="online-desc">Enter your Gemini API key below. It is stored locally in your browser and never pushed anywhere.</p>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <input type="password" id="apiKeyInput" placeholder="Paste Gemini API Key (e.g. AIzaSy...)" style="background: rgba(11,13,18,0.8); border: 1px solid var(--border-subtle); color: #fff; padding: 0.8rem; border-radius: 8px; font-size: 0.9rem;">
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button class="nav-btn" id="clearApiKeyBtn" style="color: #f43f5e;">Remove Key</button>
+            <button class="action-btn primary-nav" id="saveApiKeyBtn">💾 Save API Key</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: Online Connection -->
   <div class="modal-overlay hidden" id="onlineModal">
