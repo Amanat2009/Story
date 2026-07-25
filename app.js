@@ -2,7 +2,7 @@
    Two-Pen Tales - Role-Locked Online Co-Writing Engine & Strict API Enforcement
    ========================================================================== */
 
-const state = { 1
+const state = { 
   apiKey: localStorage.getItem('gemini_api_key') || "",
   modelName: "gemini-2.5-flash",
   audioEnabled: true,
