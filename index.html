@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Two-Pen Tales ✒️✒️ - Online Co-Writing</title>
+  <meta name="description" content="A simple, spacious co-authored story weaver. Connect online with a partner to write together from home.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- PeerJS WebRTC Library for Serverless Online Multiplayer -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Minimal Header -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-icon">✒️</span>
+      <h1 class="brand-title">Two-Pen Tales</h1>
+    </div>
+
+    <div class="header-actions">
+      <!-- Online Multiplayer Connection Pill -->
+      <div class="online-status-pill" id="onlinePill">
+        <span class="status-dot offline" id="onlineDot"></span>
+        <span id="onlineStatusText">Local Mode</span>
+        <button class="nav-btn small-btn" id="openOnlineModalBtn">🌐 Connect Online</button>
+      </div>
+
+      <span class="chapter-indicator" id="roundProgressBadge">Chapter 1</span>
+      <button class="nav-btn new-story-btn" id="startNewStoryBtn">✨ New Tale</button>
+      <button class="nav-btn" id="openKeepsakeBtn">📜 Storybook (<span id="storyCount">0</span>)</button>
+      <button class="icon-btn" id="audioToggleBtn" title="Toggle sound">🔊</button>
+    </div>
+  </header>
+
+  <main class="app-container">
+
+    <!-- Minimal Title & Settings Header -->
+    <section class="story-header-section">
+      <input type="text" id="storyTitleInput" class="minimal-title-input" value="The Whispering Clockwork" placeholder="Untitled Story...">
+      
+      <div class="story-meta-bar">
+        <div class="meta-item">
+          <input type="text" id="penAName" value="Author A" class="pen-name-input pen-a-text" placeholder="Pen A">
+          <span class="divider">&</span>
+          <input type="text" id="penBName" value="Author B" class="pen-name-input pen-b-text" placeholder="Pen B">
+        </div>
+        <div class="meta-item">
+          <select id="genreSelect" class="minimal-select">
+            <option value="Mythic Fantasy">Mythic Fantasy</option>
+            <option value="Gothic Mystery">Gothic Mystery</option>
+            <option value="Cosmic Sci-Fi">Cosmic Sci-Fi</option>
+            <option value="Cozy Romance">Cozy Romance</option>
+          </select>
+        </div>
+        <div class="meta-item">
+          <select id="targetRoundsSelect" class="minimal-select">
+            <option value="3">3 Chapters</option>
+            <option value="5" selected>5 Chapters</option>
+            <option value="10">10 Chapters</option>
+            <option value="0">Open-Ended</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Spacious Dual Station -->
+    <section class="dual-station">
+      
+      <!-- PEN A CARD -->
+      <div class="pen-card pen-a-card" id="penABox">
+        <div class="pen-card-header">
+          <span class="pen-dot pen-a-dot"></span>
+          <span class="pen-label" id="labelPenAName">Author A</span>
+          <span class="role-badge" id="roleTagA">(Local)</span>
+          <span class="lock-tag" id="penAStatusText">Ready</span>
+        </div>
+
+        <textarea id="penASpark" rows="4" placeholder="Enter Pen A's spark (a phrase, object, or twist)..."></textarea>
+
+        <div class="pen-card-footer">
+          <div class="quick-hints">
+            <span onclick="quickFill('penASpark', 'A brass pocketwatch ticking backwards')">⏱️ Silver Watch</span>
+            <span onclick="quickFill('penASpark', 'Distant harp music in the cold rain')">🎼 Cold Music</span>
+          </div>
+          <button class="action-btn pen-a-btn" id="lockPenABtn">🔒 Lock Pen A</button>
+        </div>
+      </div>
+
+      <!-- PEN B CARD -->
+      <div class="pen-card pen-b-card" id="penBBox">
+        <div class="pen-card-header">
+          <span class="pen-dot pen-b-dot"></span>
+          <span class="pen-label" id="labelPenBName">Author B</span>
+          <span class="role-badge" id="roleTagB">(Local)</span>
+          <span class="lock-tag" id="penBStatusText">Ready</span>
+        </div>
+
+        <textarea id="penBSpark" rows="4" placeholder="Enter Pen B's spark (a phrase, object, or twist)..."></textarea>
+
+        <div class="pen-card-footer">
+          <div class="quick-hints">
+            <span onclick="quickFill('penBSpark', 'A crow carrying a glowing key')"> Lantern</span>
+            <span onclick="quickFill('penBSpark', 'A river that flows uphill under the moon')"> Shifting Map</span>
+          </div>
+          <button class="action-btn pen-b-btn" id="lockPenBBtn">🔒 Lock Pen B</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Center Weave Action & Subtle Options -->
+    <section class="weave-section">
+      <div class="weave-options">
+        <label class="clean-checkbox">
+          <input type="checkbox" id="tensionModeCheck">
+          <span>Trigger Plot Conflict (Clash of Fates)</span>
+        </label>
+        <div class="conclude-vote-inline">
+          <span>End Story:</span>
+          <button class="chip-btn pen-a-chip" id="voteEndABtn">✒️ Pen A Vote</button>
+          <button class="chip-btn pen-b-chip" id="voteEndBBtn">🖋️ Pen B Vote</button>
+        </div>
+      </div>
+
+      <button class="primary-weave-btn" id="weavePassageBtn" disabled>
+        <span id="weaveBtnText">Lock both pens to weave passage</span>
+      </button>
+    </section>
+
+    <!-- Clean Woven Story Output & Audit -->
+    <section class="story-output-section card" id="auditChamber">
+      
+      <div class="draft-placeholder" id="draftPlaceholder">
+        <p class="placeholder-text">The manuscript is clear. Enter sparks in both pens above to write the next chapter.</p>
+      </div>
+
+      <!-- Active Chapter Passage Card -->
+      <div class="passage-card hidden" id="draftContentCard">
+        <div class="passage-header">
+          <span class="round-tag" id="roundBadge">Chapter 1</span>
+          <span class="sparks-tag" id="sparksUsedSummary">Pen A & Pen B</span>
+        </div>
+
+        <div class="passage-body" id="passageTextBox">
+          <!-- AI woven text appears here -->
+        </div>
+
+        <!-- Subtle Co-Audit Notes -->
+        <div class="audit-row">
+          <input type="text" id="penAEditNote" placeholder="Pen A detail tweak...">
+          <button class="chip-btn pen-a-chip" id="applyPenAEditBtn">Propose A</button>
+          <input type="text" id="penBEditNote" placeholder="Pen B detail tweak...">
+          <button class="chip-btn pen-b-chip" id="applyPenBEditBtn">Propose B</button>
+        </div>
+
+        <!-- Clean Dual Seal -->
+        <div class="seal-bar">
+          <button class="seal-pill seal-pill-a" id="sealBtnA">
+            <span id="sealTextA">🏛️ Stamp Pen A Seal</span>
+          </button>
+          
+          <span class="seal-status-text" id="sealCenterMessage">Requires both seals to commit to canon</span>
+
+          <button class="seal-pill seal-pill-b" id="sealBtnB">
+            <span id="sealTextB">🏛️ Stamp Pen B Seal</span>
+          </button>
+        </div>
+
+        <div class="commit-row">
+          <button class="commit-btn hidden" id="commitToStoryBtn">
+            Add Passage to Storybook 📖
+          </button>
+        </div>
+      </div>
+
+      <!-- Clash Resolution UI -->
+      <div class="clash-box hidden" id="clashCard">
+        <h3>🔥 Clash of Fates: Divergent Fork</h3>
+        <p class="clash-desc">Both sparks conflict! Choose how to resolve the tension:</p>
+
+        <div class="clash-options">
+          <div class="branch branch-a">
+            <strong>Path A:</strong> <span id="branchTextA">...</span>
+          </div>
+          <div class="branch branch-b">
+            <strong>Path B:</strong> <span id="branchTextB">...</span>
+          </div>
+        </div>
+
+        <div class="pact-row">
+          <label><input type="radio" name="pactChoice" value="blend" checked> Blend Both</label>
+          <label><input type="radio" name="pactChoice" value="pathA"> Path A</label>
+          <label><input type="radio" name="pactChoice" value="pathB"> Path B</label>
+        </div>
+
+        <div class="clash-actions">
+          <button class="chip-btn pen-a-chip" id="pactSignABtn">✒️ Pen A Sign</button>
+          <span id="pactStatusText">Awaiting signatures</span>
+          <button class="chip-btn pen-b-chip" id="pactSignBBtn">🖋️ Pen B Sign</button>
+        </div>
+
+        <button class="action-btn hidden" id="executeCompromiseBtn">Resolve & Weave</button>
+      </div>
+
+    </section>
+
+    <!-- Optional Collaborative Illustration -->
+    <section class="canvas-section">
+      <details class="clean-details">
+        <summary>🎨 Illuminate Scene Plate (Co-Canvas)</summary>
+        <div class="canvas-grid">
+          <div class="canvas-options">
+            <label>Pen A Lighting:
+              <select id="canvasLightSelect" class="minimal-select">
+                <option value="Bioluminescent Dusk">Sapphire Dusk</option>
+                <option value="Golden Amber Sunburst">Golden Sunburst</option>
+                <option value="Gothic Moonlight">Silver Moonlight</option>
+              </select>
+              <button class="chip-btn pen-a-chip" id="lockCanvasABtn">Lock A</button>
+            </label>
+            <label>Pen B Focal Subject:
+              <select id="canvasSubjectSelect" class="minimal-select">
+                <option value="Clockwork Compass">Clockwork Compass</option>
+                <option value="Ancient Runestone">Glowing Runestone</option>
+                <option value="Mystic Gateway">Starlight Archway</option>
+              </select>
+              <button class="chip-btn pen-b-chip" id="lockCanvasBBtn">Lock B</button>
+            </label>
+            <button class="action-btn" id="renderCanvasBtn" disabled>Render Plate</button>
+          </div>
+          <canvas id="sceneCanvas" width="500" height="300"></canvas>
+        </div>
+      </details>
+    </section>
+
+  </main>
+
+  <!-- Modal: Online Connection -->
+  <div class="modal-overlay hidden" id="onlineModal">
+    <div class="modal-card online-modal-card">
+      <div class="modal-header">
+        <h2>🌐 Connect Online with Co-Author</h2>
+        <button class="close-btn" id="closeOnlineModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body online-modal-body">
+        <p class="online-desc">Write together in real-time from different locations. One person creates a room code, and the other connects to it.</p>
+
+        <div class="online-grid">
+          <!-- Create Room (Host / Pen A) -->
+          <div class="online-box host-box">
+            <h3>Option 1: Host a Room (Pen A)</h3>
+            <p>Create a room code and share it with your writing partner.</p>
+            <button class="action-btn primary-nav" id="createRoomBtn">✨ Create Room Code</button>
+
+            <div class="room-created-info hidden" id="roomCreatedInfo">
+              <label>Your Room Code:</label>
+              <div class="code-display" id="myRoomCode">...</div>
+              <button class="chip-btn" id="copyRoomLinkBtn">📋 Copy Shareable Link</button>
+              <p class="waiting-partner" id="waitingPartnerText">⏳ Waiting for Pen B to join...</p>
+            </div>
+          </div>
+
+          <!-- Join Room (Joiner / Pen B) -->
+          <div class="online-box join-box">
+            <h3>Option 2: Join a Room (Pen B)</h3>
+            <p>Enter the Room Code provided by your writing partner.</p>
+
+            <div class="join-input-group">
+              <input type="text" id="joinRoomCodeInput" placeholder="e.g. TALE-842" style="text-transform: uppercase;">
+              <button class="action-btn" id="joinRoomBtn">🔗 Connect</button>
+            </div>
+            <p class="join-status-text" id="joinStatusText"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keepsake Book Modal -->
+  <div class="modal-overlay hidden" id="folioModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>📜 Storybook Keepsake</h2>
+        <button class="close-btn" id="closeFolioBtn">&times;</button>
+      </div>
+
+      <div class="modal-body" id="folioPrintArea">
+        <div class="book-cover">
+          <h1 id="folioTitleDisplay">The Whispering Clockwork</h1>
+          <p class="book-sub" id="folioGenreDisplay">Mythic Fantasy</p>
+          <p class="book-authors">Co-Authored by <span id="folioAuthorA">Pen A</span> & <span id="folioAuthorB">Pen B</span></p>
+          <p class="book-date" id="folioDateDisplay"></p>
+        </div>
+
+        <div class="book-chapters" id="folioChaptersContainer"></div>
+
+        <div class="book-clashes" id="clashLogContainer"></div>
+
+        <div class="book-cert">
+          <p>✦ Co-Created with Equal Human Sparks ✦</p>
+          <div class="cert-names">
+            <span id="sigLineA">Author A</span> • 🏛️ CO-SEALED • <span id="sigLineB">Author B</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="nav-btn" id="exportHtmlKeepsakeBtn">💾 Export Keepsake (.HTML)</button>
+        <button class="nav-btn primary-nav" id="printFolioBtn">🖨️ Print / Save PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
