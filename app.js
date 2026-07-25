@@ -558,6 +558,22 @@ function handleIncomingSync(data) {
       displayDraftPassage(data.draft.text, data.draft.sparkAPhrase, data.draft.sparkBPhrase);
       break;
 
+    case 'CLASH_GENERATED':
+      state.clashData = { outcomeA: data.outcomeA, outcomeB: data.outcomeB };
+      state.clashSignedA = false; state.clashSignedB = false;
+      DOM.draftPlaceholder.classList.add('hidden');
+      DOM.draftContentCard.classList.add('hidden');
+      DOM.clashCard.classList.remove('hidden');
+      DOM.branchTextA.textContent = data.outcomeA;
+      DOM.branchTextB.textContent = data.outcomeB;
+      break;
+
+    case 'CLASH_RESOLVED':
+      state.clashes.push({ round: state.currentRound, resolution: data.resolvedPassage });
+      DOM.clashCard.classList.add('hidden');
+      displayDraftPassage(data.resolvedPassage, data.sparkA, data.sparkB);
+      break;
+
     case 'DETAIL_EDIT':
       state.currentDraft.text += ` [${data.authorName}: ${data.val}]`;
       DOM.passageTextBox.innerHTML = formatHighlightedPassage(state.currentDraft.text, state.currentDraft.sparkAPhrase, state.currentDraft.sparkBPhrase);
@@ -1094,6 +1110,8 @@ function showClashUI(outcomeA, outcomeB) {
 
   DOM.branchTextA.textContent = outcomeA;
   DOM.branchTextB.textContent = outcomeB;
+
+  sendSyncEvent({ type: 'CLASH_GENERATED', outcomeA, outcomeB });
 }
 
 function signClashPact(author, isLocalAction) {
@@ -1123,6 +1141,10 @@ function executeClashResolution(isLocalAction) {
   state.clashes.push({ round: state.currentRound, resolution: resolvedPassage });
   DOM.clashCard.classList.add('hidden');
   displayDraftPassage(resolvedPassage, state.penA.spark, state.penB.spark);
+
+  if (isLocalAction) {
+    sendSyncEvent({ type: 'CLASH_RESOLVED', resolvedPassage, sparkA: state.penA.spark, sparkB: state.penB.spark });
+  }
 }
 
 function checkCanvasReady() {
