@@ -1,8 +1,8 @@
 /* ==========================================================================
-   Two-Pen Tales - Role-Locked Online Co-Writing Engine & Strict API Enforcement
+   Two-Pen Tales - KokonutUI Micro-Animations & Fortified Engine
    ========================================================================== */
 
-const state = { 
+const state = {
   apiKey: localStorage.getItem('gemini_api_key') || "",
   modelName: "gemini-2.5-flash",
   audioEnabled: true,
@@ -118,6 +118,11 @@ document.addEventListener('DOMContentLoaded', () => {
   updateProgressBadge();
   initCanvasPlaceholder();
   checkUrlForRoomCode();
+
+  // KokonutUI Micro-Animations
+  initSpotlightAndTilt();
+  initRippleEffects();
+  initAmbientParticleCanvas();
 });
 
 function cacheDOM() {
@@ -223,6 +228,113 @@ function cacheDOM() {
   };
 }
 
+/* KokonutUI Micro-Animation Listeners */
+function initSpotlightAndTilt() {
+  document.querySelectorAll('.spotlight-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      card.style.setProperty('--mouse-x', `${x}px`);
+      card.style.setProperty('--mouse-y', `${y}px`);
+
+      if (card.classList.contains('tilt-card')) {
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const rotateX = ((y - centerY) / centerY) * -4;
+        const rotateY = ((x - centerX) / centerX) * 4;
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+      }
+    });
+
+    card.addEventListener('mouseleave', () => {
+      if (card.classList.contains('tilt-card')) {
+        card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`;
+      }
+    });
+  });
+}
+
+function initRippleEffects() {
+  document.querySelectorAll('.ripple-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      const rect = btn.getBoundingClientRect();
+      const circle = document.createElement('span');
+      const diameter = Math.max(rect.width, rect.height);
+      const radius = diameter / 2;
+
+      circle.style.width = circle.style.height = `${diameter}px`;
+      circle.style.left = `${e.clientX - rect.left - radius}px`;
+      circle.style.top = `${e.clientY - rect.top - radius}px`;
+      circle.classList.add('ripple-effect');
+
+      const ripple = btn.getElementsByClassName('ripple-effect')[0];
+      if (ripple) ripple.remove();
+      btn.appendChild(circle);
+    });
+  });
+}
+
+/* Floating Ambient Particle Canvas Background */
+function initAmbientParticleCanvas() {
+  const canvas = document.getElementById('bgParticlesCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  const particles = Array.from({ length: 35 }, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    radius: Math.random() * 2 + 1,
+    alpha: Math.random() * 0.5 + 0.2
+  }));
+
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+
+    particles.forEach((p, i) => {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0 || p.x > width) p.vx *= -1;
+      if (p.y < 0 || p.y > height) p.vy *= -1;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(217, 119, 6, ${p.alpha})`;
+      ctx.fill();
+
+      // Draw faint connecting lines between nearby particles
+      for (let j = i + 1; j < particles.length; j++) {
+        const p2 = particles[j];
+        const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = `rgba(37, 99, 235, ${0.12 * (1 - dist / 120)})`;
+          ctx.lineWidth = 0.6;
+          ctx.stroke();
+        }
+      }
+    });
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+}
+
 function bindEvents() {
   DOM.penAName.addEventListener('input', (e) => {
     state.penA.name = e.target.value || "Author A";
@@ -306,8 +418,16 @@ function bindEvents() {
 
   DOM.applyPenAEditBtn.addEventListener('click', () => applyAuthorEdit('A', true));
   DOM.applyPenBEditBtn.addEventListener('click', () => applyAuthorEdit('B', true));
-  DOM.sealBtnA.addEventListener('click', () => toggleSealAuthor('A', true));
-  DOM.sealBtnB.addEventListener('click', () => toggleSealAuthor('B', true));
+  DOM.sealBtnA.addEventListener('click', (e) => {
+    DOM.sealBtnA.classList.add('stamp-press');
+    setTimeout(() => DOM.sealBtnA.classList.remove('stamp-press'), 400);
+    toggleSealAuthor('A', true);
+  });
+  DOM.sealBtnB.addEventListener('click', (e) => {
+    DOM.sealBtnB.classList.add('stamp-press');
+    setTimeout(() => DOM.sealBtnB.classList.remove('stamp-press'), 400);
+    toggleSealAuthor('B', true);
+  });
   DOM.commitToStoryBtn.addEventListener('click', () => commitPassageToStory(true));
 
   DOM.pactSignABtn.addEventListener('click', () => signClashPact('A', true));
